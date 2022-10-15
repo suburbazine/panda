@@ -186,7 +186,7 @@ static int hyundai_rx_hook(CANPacket_t *to_push) {
   int bus = GET_BUS(to_push);
   int addr = GET_ADDR(to_push);
 
-  // SCC12 is on bus 2 for camera-based SCC cars, bus 0 on all others
+  // SCC12 and CLU11 are on bus 2 for camera-based SCC cars, bus 0 on all others
   if (valid && (((bus == 0) && !hyundai_camera_scc) || ((bus == 2) && hyundai_camera_scc))) {
     if (addr == 1057) {
       // 2 bits: 13-14
