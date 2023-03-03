@@ -31,6 +31,12 @@ const CanMsg HYUNDAI_TX_MSGS[] = {
   {1157, 0, 4}, // LFAHDA_MFC Bus 0
 };
 
+const CanMsg HYUNDAI_CAN_CANFD_TX_MSGS[] = {
+  {832, 0, 8},
+  {1265, 0, 4},
+  {1157, 0, 8},
+};
+
 const CanMsg HYUNDAI_LONG_TX_MSGS[] = {
   {832, 0, 8},  // LKAS11 Bus 0
   {1265, 0, 4}, // CLU11 Bus 0
@@ -282,6 +288,8 @@ static int hyundai_tx_hook(CANPacket_t *to_send) {
     tx = msg_allowed(to_send, HYUNDAI_LONG_TX_MSGS, sizeof(HYUNDAI_LONG_TX_MSGS)/sizeof(HYUNDAI_LONG_TX_MSGS[0]));
   } else if (hyundai_camera_scc) {
     tx = msg_allowed(to_send, HYUNDAI_CAMERA_SCC_TX_MSGS, sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS)/sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS[0]));
+  } else if (hyundai_can_canfd) {
+    tx = msg_allowed(to_send, HYUNDAI_CAN_CANFD_TX_MSGS, sizeof(HYUNDAI_CAN_CANFD_TX_MSGS)/sizeof(HYUNDAI_CAN_CANFD_TX_MSGS[0]));
   } else {
     tx = msg_allowed(to_send, HYUNDAI_TX_MSGS, sizeof(HYUNDAI_TX_MSGS)/sizeof(HYUNDAI_TX_MSGS[0]));
   }
