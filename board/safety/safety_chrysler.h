@@ -9,7 +9,7 @@ const SteeringLimits CHRYSLER_STEERING_LIMITS = {
 };
 
 const SteeringLimits CHRYSLER_RAM_DT_STEERING_LIMITS = {
-  .max_steer = 261,
+  .max_steer = 350,
   .max_rt_delta = 112,
   .max_rt_interval = 250000,
   .max_rate_up = 6,
@@ -180,7 +180,7 @@ static int chrysler_rx_hook(CANPacket_t *to_push) {
 
   bool valid = addr_safety_check(to_push, &chrysler_rx_checks,
                                  chrysler_get_checksum, chrysler_compute_checksum,
-                                 chrysler_get_counter);
+                                 chrysler_get_counter, NULL);
 
   const int bus = GET_BUS(to_push);
   const int addr = GET_ADDR(to_push);
@@ -226,8 +226,7 @@ static int chrysler_rx_hook(CANPacket_t *to_push) {
   return valid;
 }
 
-static int chrysler_tx_hook(CANPacket_t *to_send, bool longitudinal_allowed) {
-  UNUSED(longitudinal_allowed);
+static int chrysler_tx_hook(CANPacket_t *to_send) {
 
   int tx = 1;
   int addr = GET_ADDR(to_send);

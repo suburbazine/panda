@@ -1,3 +1,5 @@
+#pragma once
+
 #define GET_BIT(msg, b) (((msg)->data[((b) / 8U)] >> ((b) % 8U)) & 0x1U)
 #define GET_BYTE(msg, b) ((msg)->data[(b)])
 #define GET_BYTES_04(msg) ((msg)->data[0] | ((msg)->data[1] << 8U) | ((msg)->data[2] << 16U) | ((msg)->data[3] << 24U))
@@ -32,6 +34,7 @@ typedef enum {
 } SteeringControlType;
 
 typedef struct {
+  // torque cmd limits
   const int max_steer;
   const int max_rate_up;
   const int max_rate_down;
@@ -52,7 +55,29 @@ typedef struct {
   const int max_invalid_request_frames;
   const uint32_t min_valid_request_rt_interval;
   const bool has_steer_req_tolerance;
+
+  // angle cmd limits
+  const int angle_deg_to_can;
+  const struct lookup_t angle_rate_up_lookup;
+  const struct lookup_t angle_rate_down_lookup;
 } SteeringLimits;
+
+typedef struct {
+  // acceleration cmd limits
+  const int max_accel;
+  const int min_accel;
+  const int inactive_accel;
+
+  // gas & brake cmd limits
+  // inactive and min gas are 0 on most safety modes
+  const int max_gas;
+  const int min_gas;
+  const int inactive_gas;
+  const int max_brake;
+
+  // speed cmd limits
+  const int inactive_speed;
+} LongitudinalLimits;
 
 typedef struct {
   const int addr;
@@ -60,6 +85,7 @@ typedef struct {
   const int len;
   const bool check_checksum;         // true is checksum check is performed
   const uint8_t max_counter;         // maximum value of the counter. 0 means that the counter check is skipped
+  const bool quality_flag;           // true is quality flag check is performed
   const uint32_t expected_timestep;  // expected time between message updates [us]
 } CanMsgCheck;
 
@@ -72,6 +98,7 @@ typedef struct {
   int index;                         // if multiple messages are allowed to be checked, this stores the index of the first one seen. only msg[msg_index] will be used
   bool valid_checksum;               // true if and only if checksum check is passed
   int wrong_counters;                // counter of wrong counters, saturated between 0 and MAX_WRONG_COUNTERS
+  bool valid_quality_flag;           // true if the message's quality/health/status signals are valid
   uint8_t last_counter;              // last counter value
   uint32_t last_timestamp;           // micro-s
   bool lagging;                      // true if and only if the time between updates is excessive
@@ -108,16 +135,23 @@ bool addr_safety_check(CANPacket_t *to_push,
                        const addr_checks *rx_checks,
                        uint32_t (*get_checksum)(CANPacket_t *to_push),
                        uint32_t (*compute_checksum)(CANPacket_t *to_push),
-                       uint8_t (*get_counter)(CANPacket_t *to_push));
+                       uint8_t (*get_counter)(CANPacket_t *to_push),
+                       bool (*get_quality_flag_valid)(CANPacket_t *to_push));
 void generic_rx_checks(bool stock_ecu_detected);
 void relay_malfunction_set(void);
 void relay_malfunction_reset(void);
 bool steer_torque_cmd_checks(int desired_torque, int steer_req, const SteeringLimits limits);
+bool steer_angle_cmd_checks(int desired_angle, bool steer_control_enabled, const SteeringLimits limits);
+bool longitudinal_accel_checks(int desired_accel, const LongitudinalLimits limits);
+bool longitudinal_speed_checks(int desired_speed, const LongitudinalLimits limits);
+bool longitudinal_gas_checks(int desired_gas, const LongitudinalLimits limits);
+bool longitudinal_brake_checks(int desired_brake, const LongitudinalLimits limits);
+bool longitudinal_interceptor_checks(CANPacket_t *to_send);
 void pcm_cruise_check(bool cruise_engaged);
 
 typedef const addr_checks* (*safety_hook_init)(uint16_t param);
 typedef int (*rx_hook)(CANPacket_t *to_push);
-typedef int (*tx_hook)(CANPacket_t *to_send, bool longitudinal_allowed);
+typedef int (*tx_hook)(CANPacket_t *to_send);
 typedef int (*tx_lin_hook)(int lin_num, uint8_t *data, int len);
 typedef int (*fwd_hook)(int bus_num, CANPacket_t *to_fwd);
 
