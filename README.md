@@ -20,8 +20,8 @@ sudo apt-get install dfu-util gcc-arm-none-eabi python3-pip libffi-dev git
 ```
 ```bash
 # macOS
-brew tap ArmMbed/homebrew-formulae
-brew install python dfu-util arm-none-eabi-gcc gcc@12
+brew install --cask gcc-arm-embedded
+brew install python3 dfu-util gcc@12
 ```
 
 Clone panda repository:
@@ -112,7 +112,7 @@ to ensure that the behavior remains unchanged.
     * compiling the code and flashing it through USB.
     * receiving, sending, and forwarding CAN messages on all buses, over USB.
 
-In addition, we run the [pylint](https://www.pylint.org/) and [flake8](https://github.com/PyCQA/flake8) linters on all python files within the panda repo.
+In addition, we run the [ruff linter](https://github.com/astral-sh/ruff) on all python files within the panda repo.
 
 ## Hardware
 

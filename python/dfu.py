@@ -1,3 +1,4 @@
+import os
 import usb1
 import struct
 import binascii
@@ -6,7 +7,7 @@ from typing import List, Optional
 from .base import BaseSTBootloaderHandle
 from .spi import STBootloaderSPIHandle, PandaSpiException
 from .usb import STBootloaderUSBHandle
-from .constants import McuType
+from .constants import FW_PATH, McuType
 
 
 class PandaDFU:
@@ -58,7 +59,7 @@ class PandaDFU:
     return handle
 
   @staticmethod
-  def list() -> List[str]:
+  def list() -> List[str]: # noqa: A003
     ret = PandaDFU.usb_list()
     ret += PandaDFU.spi_list()
     return list(set(ret))
@@ -110,10 +111,10 @@ class PandaDFU:
     self._handle.erase_bootstub()
     self._handle.erase_app()
     self._handle.program(self._mcu_type.config.bootstub_address, code_bootstub)
-    self.reset()
 
   def recover(self):
-    with open(self._mcu_type.config.bootstub_path, "rb") as f:
+    fn = os.path.join(FW_PATH, self._mcu_type.config.bootstub_fn)
+    with open(fn, "rb") as f:
       code = f.read()
     self.program_bootstub(code)
-
+    self.reset()

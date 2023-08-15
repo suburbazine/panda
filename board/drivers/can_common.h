@@ -8,6 +8,7 @@ typedef struct {
 typedef struct {
   uint8_t bus_lookup;
   uint8_t can_num_lookup;
+  int8_t forwarding_bus;
   uint32_t can_speed;
   uint32_t can_data_speed;
   bool canfd_enabled;
@@ -147,7 +148,7 @@ void can_clear(can_ring *q) {
   q->r_ptr = 0;
   EXIT_CRITICAL();
   // handle TX buffer full with zero ECUs awake on the bus
-  usb_cb_ep3_out_complete();
+  refresh_can_tx_slots_available();
 }
 
 // assign CAN numbering
@@ -157,14 +158,15 @@ void can_clear(can_ring *q) {
 // can number: numeric lookup for MCU CAN interfaces (0 = CAN1, 1 = CAN2, etc);
 // bus_lookup: Translates from 'can number' to 'bus number'.
 // can_num_lookup: Translates from 'bus number' to 'can number'.
+// forwarding bus: If >= 0, forward all messages from this bus to the specified bus.
 
 // Helpers
 // Panda:       Bus 0=CAN1   Bus 1=CAN2   Bus 2=CAN3
 bus_config_t bus_config[] = {
-  { .bus_lookup = 0U, .can_num_lookup = 0U, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
-  { .bus_lookup = 1U, .can_num_lookup = 1U, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
-  { .bus_lookup = 2U, .can_num_lookup = 2U, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
-  { .bus_lookup = 0xFFU, .can_num_lookup = 0xFFU, .can_speed = 333U, .can_data_speed = 333U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
+  { .bus_lookup = 0U, .can_num_lookup = 0U, .forwarding_bus = -1, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
+  { .bus_lookup = 1U, .can_num_lookup = 1U, .forwarding_bus = -1, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
+  { .bus_lookup = 2U, .can_num_lookup = 2U, .forwarding_bus = -1, .can_speed = 5000U, .can_data_speed = 20000U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
+  { .bus_lookup = 0xFFU, .can_num_lookup = 0xFFU, .forwarding_bus = -1, .can_speed = 333U, .can_data_speed = 333U, .canfd_enabled = false, .brs_enabled = false, .canfd_non_iso = false },
 };
 
 #define CANIF_FROM_CAN_NUM(num) (cans[num])
@@ -190,6 +192,10 @@ void can_flip_buses(uint8_t bus1, uint8_t bus2){
   bus_config[bus2].can_num_lookup = bus1;
 }
 
+void can_set_forwarding(uint8_t from, uint8_t to) {
+  bus_config[from].forwarding_bus = to;
+}
+
 void ignition_can_hook(CANPacket_t *to_push) {
   int bus = GET_BUS(to_push);
   int addr = GET_ADDR(to_push);
@@ -199,7 +205,7 @@ void ignition_can_hook(CANPacket_t *to_push) {
     // GM exception
     if ((addr == 0x160) && (len == 5)) {
       // this message isn't all zeros when ignition is on
-      ignition_can = GET_BYTES_04(to_push) != 0U;
+      ignition_can = GET_BYTES(to_push, 0, 4) != 0U;
       ignition_can_cnt = 0U;
     }
 
