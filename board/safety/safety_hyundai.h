@@ -327,7 +327,8 @@ static int hyundai_fwd_hook(int bus_num, int addr) {
     int is_scc_msg = (addr == 0x420) || (addr == 0x421) || (addr == 0x50A) || (addr == 0x389);
     int is_fca_msg = (addr == 0x38D) || (addr == 0x483);
 
-    int block_msg = is_lkas11_msg || is_lfahda_mfc_msg || ((is_scc_msg || is_fca_msg) && hyundai_longitudinal);
+    int block_msg = is_lkas11_msg || is_lfahda_mfc_msg ||
+                    ((is_scc_msg || is_fca_msg) && hyundai_longitudinal && hyundai_camera_scc);
     if (!block_msg) {
       bus_fwd = 0;
     }
