@@ -17,6 +17,22 @@
   .has_steer_req_tolerance = true, \
 }
 
+#define HYUNDAI_COMMON_TX_MSGS(alt_bus) \
+  {0x340,       0, 8}, \
+  {0x4F1, alt_bus, 4}, \
+  {0x485,       0, 4}, \
+
+#define HYUNDAI_COMMON_LONG_TX_MSGS(alt_bus) \
+  {0x340,       0, 8}, \
+  {0x4F1, alt_bus, 4}, \
+  {0x485,       0, 4}, \
+  {0x420,       0, 8}, \
+  {0x421,       0, 8}, \
+  {0x50A,       0, 8}, \
+  {0x389,       0, 8}, \
+  {0x38D,       0, 8}, \
+  {0x483,       0, 8}, \
+
 const SteeringLimits HYUNDAI_STEERING_LIMITS = HYUNDAI_LIMITS(384, 3, 7);
 const SteeringLimits HYUNDAI_STEERING_LIMITS_ALT = HYUNDAI_LIMITS(270, 2, 3);
 
@@ -26,41 +42,21 @@ const LongitudinalLimits HYUNDAI_LONG_LIMITS = {
 };
 
 const CanMsg HYUNDAI_TX_MSGS[] = {
-  {0x340, 0, 8}, // LKAS11 Bus 0
-  {0x4F1, 0, 4}, // CLU11 Bus 0
-  {0x485, 0, 4}, // LFAHDA_MFC Bus 0
+  HYUNDAI_COMMON_TX_MSGS(0)
 };
 
 const CanMsg HYUNDAI_LONG_TX_MSGS[] = {
-  {0x340, 0, 8}, // LKAS11 Bus 0
-  {0x4F1, 0, 4}, // CLU11 Bus 0
-  {0x485, 0, 4}, // LFAHDA_MFC Bus 0
-  {0x420, 0, 8}, // SCC11 Bus 0
-  {0x421, 0, 8}, // SCC12 Bus 0
-  {0x50A, 0, 8}, // SCC13 Bus 0
-  {0x389, 0, 8}, // SCC14 Bus 0
+  HYUNDAI_COMMON_LONG_TX_MSGS(0)
   {0x4A2, 0, 2}, // FRT_RADAR11 Bus 0
-  {0x38D, 0, 8}, // FCA11 Bus 0
-  {0x483, 0, 8}, // FCA12 Bus 0
   {0x7D0, 0, 8}, // radar UDS TX addr Bus 0 (for radar disable)
 };
 
 const CanMsg HYUNDAI_CAMERA_SCC_TX_MSGS[] = {
-  {0x340, 0, 8}, // LKAS11 Bus 0
-  {0x4F1, 2, 4}, // CLU11 Bus 2
-  {0x485, 0, 4}, // LFAHDA_MFC Bus 0
+  HYUNDAI_COMMON_TX_MSGS(2)
 };
 
 const CanMsg HYUNDAI_CAMERA_SCC_LONG_TX_MSGS[] = {
-  {0x340, 0, 8}, // LKAS11 Bus 0
-  {0x4F1, 2, 4}, // CLU11 Bus 2
-  {0x485, 0, 4}, // LFAHDA_MFC Bus 0
-  {0x420, 0, 8}, // SCC11 Bus 0
-  {0x421, 0, 8}, // SCC12 Bus 0
-  {0x50A, 0, 8}, // SCC13 Bus 0
-  {0x389, 0, 8}, // SCC14 Bus 0
-  {0x38D, 0, 8}, // FCA11 Bus 0
-  {0x483, 0, 8}, // FCA12 Bus 0
+  HYUNDAI_COMMON_LONG_TX_MSGS(2)
 };
 
 AddrCheckStruct hyundai_addr_checks[] = {
