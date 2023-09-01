@@ -212,6 +212,8 @@ class TestHyundaiLongitudinalSafety(HyundaiLongitudinalBase, TestHyundaiSafety):
 class TestHyundaiCameraSCCLongitudinalSafety(HyundaiLongitudinalBase, TestHyundaiSafetyCameraSCC):
   TX_MSGS = [[0x340, 0], [0x4F1, 2], [0x485, 0], [0x420, 0], [0x421, 0], [0x50A, 0], [0x389, 0], [0x38D, 0], [0x483, 0]]
 
+  FWD_BLACKLISTED_ADDRS = {2: [0x420, 0x421, 0x50A, 0x389, 0x38D, 0x483]}
+
   DISABLED_ECU_ACTUATION_MSG = (0x421, 0)
 
   def setUp(self):
