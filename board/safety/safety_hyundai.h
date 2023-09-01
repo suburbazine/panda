@@ -227,7 +227,7 @@ static int hyundai_rx_hook(CANPacket_t *to_push) {
 
     bool stock_ecu_detected = (addr == 0x340);
 
-    // If openpilot is controlling longitudinal we need to ensure the radar is turned off on non-camera SCC cars
+    // If openpilot is controlling longitudinal we need to ensure the radar is turned off on radar SCC cars
     // Enforce by checking we don't see SCC12
     if (hyundai_longitudinal && (addr == 0x421)) {
       stock_ecu_detected = true;
@@ -243,17 +243,11 @@ static int hyundai_tx_hook(CANPacket_t *to_send) {
   int addr = GET_ADDR(to_send);
 
   if (hyundai_longitudinal) {
-    if (hyundai_camera_scc) {
-      tx = msg_allowed(to_send, HYUNDAI_CAMERA_SCC_LONG_TX_MSGS, sizeof(HYUNDAI_CAMERA_SCC_LONG_TX_MSGS)/sizeof(HYUNDAI_CAMERA_SCC_LONG_TX_MSGS[0]));
-    } else {
-      tx = msg_allowed(to_send, HYUNDAI_LONG_TX_MSGS, sizeof(HYUNDAI_LONG_TX_MSGS)/sizeof(HYUNDAI_LONG_TX_MSGS[0]));
-    }
+    tx = hyundai_camera_scc ? msg_allowed(to_send, HYUNDAI_CAMERA_SCC_LONG_TX_MSGS, sizeof(HYUNDAI_CAMERA_SCC_LONG_TX_MSGS)/sizeof(HYUNDAI_CAMERA_SCC_LONG_TX_MSGS[0])) :
+                              msg_allowed(to_send, HYUNDAI_LONG_TX_MSGS, sizeof(HYUNDAI_LONG_TX_MSGS)/sizeof(HYUNDAI_LONG_TX_MSGS[0]));
   } else {
-    if (hyundai_camera_scc) {
-      tx = msg_allowed(to_send, HYUNDAI_CAMERA_SCC_TX_MSGS, sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS)/sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS[0]));
-    } else {
-      tx = msg_allowed(to_send, HYUNDAI_TX_MSGS, sizeof(HYUNDAI_TX_MSGS)/sizeof(HYUNDAI_TX_MSGS[0]));
-    }
+    tx = hyundai_camera_scc ? msg_allowed(to_send, HYUNDAI_CAMERA_SCC_TX_MSGS, sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS)/sizeof(HYUNDAI_CAMERA_SCC_TX_MSGS[0])) :
+                              msg_allowed(to_send, HYUNDAI_TX_MSGS, sizeof(HYUNDAI_TX_MSGS)/sizeof(HYUNDAI_TX_MSGS[0]));
   }
 
   // FCA11: Block any potential actuation
