@@ -53,7 +53,8 @@ const CanMsg HYUNDAI_CAMERA_SCC_TX_MSGS[] = {
 
 AddrCheckStruct hyundai_addr_checks[] = {
   {.msg = {{0x260, 0, 8, .check_checksum = true, .max_counter = 3U, .expected_timestep = 10000U},
-           {0x371, 0, 8, .expected_timestep = 10000U}, { 0 }}},
+           {0x371, 0, 8, .expected_timestep = 10000U},
+           {0x91,  0, 8, .expected_timestep = 10000U}}},
   {.msg = {{0x386, 0, 8, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U}, { 0 }, { 0 }}},
   {.msg = {{0x394, 0, 8, .check_checksum = true, .max_counter = 7U, .expected_timestep = 10000U}, { 0 }, { 0 }}},
   {.msg = {{0x421, 0, 8, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U}, { 0 }, { 0 }}},
@@ -71,7 +72,8 @@ AddrCheckStruct hyundai_cam_scc_addr_checks[] = {
 
 AddrCheckStruct hyundai_long_addr_checks[] = {
   {.msg = {{0x260, 0, 8, .check_checksum = true, .max_counter = 3U, .expected_timestep = 10000U},
-           {0x371, 0, 8, .expected_timestep = 10000U}, { 0 }}},
+           {0x371, 0, 8, .expected_timestep = 10000U},
+           {0x91,  0, 8, .expected_timestep = 10000U}}},
   {.msg = {{0x386, 0, 8, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U}, { 0 }, { 0 }}},
   {.msg = {{0x394, 0, 8, .check_checksum = true, .max_counter = 7U, .expected_timestep = 10000U}, { 0 }, { 0 }}},
   {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .expected_timestep = 20000U}, { 0 }, { 0 }}},
@@ -201,7 +203,9 @@ static int hyundai_rx_hook(CANPacket_t *to_push) {
       gas_pressed = (((GET_BYTE(to_push, 4) & 0x7FU) << 1) | GET_BYTE(to_push, 3) >> 7) != 0U;
     } else if ((addr == 0x371) && hyundai_hybrid_gas_signal) {
       gas_pressed = GET_BYTE(to_push, 7) != 0U;
-    } else if ((addr == 0x260) && !hyundai_ev_gas_signal && !hyundai_hybrid_gas_signal) {
+    } else if ((addr == 0x91) && hyundai_fcev_gas_signal) {
+      gas_pressed = GET_BYTE(to_push, 6) != 0U;
+    } else if ((addr == 0x260) && !hyundai_ev_gas_signal && !hyundai_hybrid_gas_signal && !hyundai_fcev_gas_signal) {
       gas_pressed = (GET_BYTE(to_push, 7) >> 6) != 0U;
     } else {
     }
