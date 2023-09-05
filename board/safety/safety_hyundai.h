@@ -102,10 +102,11 @@ AddrCheckStruct hyundai_legacy_addr_checks[] = {
 };
 #define HYUNDAI_LEGACY_ADDR_CHECK_LEN (sizeof(hyundai_legacy_addr_checks) / sizeof(hyundai_legacy_addr_checks[0]))
 
-const int HYUNDAI_PARAM_CAN_CANFD = 256;
 
+const int HYUNDAI_PARAM_CAN_CANFD = 256;
 bool hyundai_legacy = false;
 bool hyundai_can_canfd = false;
+
 
 addr_checks hyundai_rx_checks = {hyundai_addr_checks, HYUNDAI_ADDR_CHECK_LEN};
 
@@ -148,11 +149,7 @@ static uint32_t hyundai_get_checksum(CANPacket_t *to_push) {
   } else if (addr == 0x394) {
     chksum = GET_BYTE(to_push, 6) & 0xFU;
   } else if (addr == 0x421) {
-    if (hyundai_can_canfd) {
-      chksum = GET_BYTE(to_push, 0);
-    } else {
-      chksum = GET_BYTE(to_push, 7) >> 4;
-    }
+    chksum = hyundai_can_canfd ? GET_BYTE(to_push, 0) : GET_BYTE(to_push, 7) >> 4;
   } else {
     chksum = 0;
   }
@@ -161,10 +158,6 @@ static uint32_t hyundai_get_checksum(CANPacket_t *to_push) {
 
 static uint32_t hyundai_compute_checksum(CANPacket_t *to_push) {
   int addr = GET_ADDR(to_push);
-
-  // CAN_CANFD
-  int len = GET_LEN(to_push);
-  uint32_t address = GET_ADDR(to_push);
 
   uint16_t chksum = 0;
   if (addr == 0x386) {
@@ -183,15 +176,9 @@ static uint32_t hyundai_compute_checksum(CANPacket_t *to_push) {
     chksum = (chksum ^ 9U) & 15U;
   } else {
     if (hyundai_can_canfd && (addr == 0x421)) {
-      for (int i = 2; i < len; i++) {
-        chksum = (chksum << 8U) ^ hyundai_can_canfd_crc_lut[(chksum >> 8U) ^ GET_BYTE(to_push, i)];
-      }
-
-      // Add address to crc
-      chksum = (chksum << 8U) ^ hyundai_can_canfd_crc_lut[(chksum >> 8U) ^ ((address >> 0U) & 0xFFU)];
-      chksum = (chksum << 8U) ^ hyundai_can_canfd_crc_lut[(chksum >> 8U) ^ ((address >> 8U) & 0xFFU)];
-
-      chksum ^= 0x5f29U;
+      int len = GET_LEN(to_push);
+      uint32_t address = GET_ADDR(to_push);
+      chksum = hyundai_common_canfd_compute_checksum(to_push, len, address);
     } else {
       // sum of nibbles
       for (int i = 0; i < 8; i++) {
@@ -375,8 +362,11 @@ static int hyundai_fwd_hook(int bus_num, int addr) {
 static const addr_checks* hyundai_init(uint16_t param) {
   hyundai_common_init(param);
   hyundai_legacy = false;
-  gen_crc_lookup_table_16(0x1021, hyundai_can_canfd_crc_lut);
   hyundai_can_canfd = GET_FLAG(param, HYUNDAI_PARAM_CAN_CANFD);
+
+  if (hyundai_can_canfd) {
+    gen_crc_lookup_table_16(0x1021, hyundai_canfd_crc_lut);
+  }
 
   if (hyundai_camera_scc || hyundai_can_canfd) {
     hyundai_longitudinal = false;
