@@ -44,6 +44,8 @@ int get_health_pkt(void *dat) {
   health->sbu1_voltage_mV = harness.sbu1_voltage_mV;
   health->sbu2_voltage_mV = harness.sbu2_voltage_mV;
 
+  health->som_reset_triggered = bootkick_reset_triggered;
+
   return sizeof(*health);
 }
 
@@ -57,7 +59,7 @@ int get_rtc_pkt(void *dat) {
 void comms_endpoint2_write(uint8_t *data, uint32_t len) {
   uart_ring *ur = get_ring_by_number(data[0]);
   if ((len != 0U) && (ur != NULL)) {
-    if ((data[0] < 2U) || (data[0] >= 4U) || safety_tx_lin_hook(data[0] - 2U, &data[1], len - 1U)) {
+    if ((data[0] < 2U) || (data[0] >= 4U)) {
       for (uint32_t i = 1; i < len; i++) {
         while (!putc(ur, data[i])) {
           // wait
@@ -150,10 +152,6 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
       resp[1] = ((fan_state.rpm & 0xFF00U) >> 8U);
       resp_len = 2;
       break;
-    // **** 0xb3: set phone power
-    case 0xb3:
-      current_board->set_phone_power(req->param1 > 0U);
-      break;
     // **** 0xc0: reset communications
     case 0xc0:
       comms_can_reset();
@@ -196,6 +194,11 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
     // **** 0xc5: DEBUG: drive relay
     case 0xc5:
       set_intercept_relay((req->param1 & 0x1U), (req->param1 & 0x2U));
+      break;
+    // **** 0xc6: DEBUG: read SOM GPIO
+    case 0xc6:
+      resp[0] = current_board->read_som_gpio();
+      resp_len = 1;
       break;
     // **** 0xd0: fetch serial (aka the provisioned dongle ID)
     case 0xd0:
@@ -381,16 +384,6 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
     case 0xe7:
       set_power_save_state(req->param1);
       break;
-    // **** 0xf0: k-line/l-line wake-up pulse for KWP2000 fast initialization
-    case 0xf0:
-      if(current_board->has_lin) {
-        bool k = (req->param1 == 0U) || (req->param1 == 2U);
-        bool l = (req->param1 == 1U) || (req->param1 == 2U);
-        if (bitbang_wakeup(k, l)) {
-          resp_len = -1; // do not clear NAK yet (wait for bit banging to finish)
-        }
-      }
-      break;
     // **** 0xf1: Clear CAN ring buffer.
     case 0xf1:
       if (req->param1 == 0xFFFFU) {
@@ -422,17 +415,6 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
         heartbeat_engaged = (req->param1 == 1U);
         break;
       }
-    // **** 0xf4: k-line/l-line 5 baud initialization
-    case 0xf4:
-      if(current_board->has_lin) {
-        bool k = (req->param1 == 0U) || (req->param1 == 2U);
-        bool l = (req->param1 == 1U) || (req->param1 == 2U);
-        uint8_t five_baud_addr = (req->param2 & 0xFFU);
-        if (bitbang_five_baud_addr(k, l, five_baud_addr)) {
-          resp_len = -1; // do not clear NAK yet (wait for bit banging to finish)
-        }
-      }
-      break;
     // **** 0xf6: set siren enabled
     case 0xf6:
       siren_enabled = (req->param1 != 0U);
@@ -470,18 +452,6 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
         bool ret = can_init(CAN_NUM_FROM_BUS_NUM(req->param1));
         UNUSED(ret);
       }
-      break;
-    // *** 0xfd: read logs
-    case 0xfd:
-      if (req->param1 == 1U) {
-        logging_init_read_index();
-      }
-
-      if (req->param2 != 0xFFFFU) {
-        logging_find_read_index(req->param2);
-      }
-
-      resp_len = logging_read(resp);
       break;
     default:
       print("NO HANDLER ");

@@ -7,19 +7,10 @@ import itertools
 from panda import Panda
 from panda.tests.libpanda import libpanda_py
 import panda.tests.safety.common as common
-from panda.tests.safety.common import CANPackerPanda, make_msg
+from panda.tests.safety.common import CANPackerPanda
 
 
-def interceptor_msg(gas, addr):
-  to_send = make_msg(0, addr, 6)
-  to_send[0].data[0] = (gas & 0xFF00) >> 8
-  to_send[0].data[1] = gas & 0xFF
-  to_send[0].data[2] = (gas & 0xFF00) >> 8
-  to_send[0].data[3] = gas & 0xFF
-  return to_send
-
-
-class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
+class TestToyotaSafetyBase(common.PandaCarSafetyTest, common.InterceptorSafetyTest,
                            common.LongitudinalAccelSafetyTest):
 
   TX_MSGS = [[0x283, 0], [0x2E6, 0], [0x2E7, 0], [0x33E, 0], [0x344, 0], [0x365, 0], [0x366, 0], [0x4CB, 0],  # DSU bus 0
@@ -27,8 +18,7 @@ class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
              [0x2E4, 0], [0x191, 0], [0x411, 0], [0x412, 0], [0x343, 0], [0x1D2, 0],  # LKAS + ACC
              [0x200, 0], [0x750, 0]]  # interceptor + blindspot monitor
   STANDSTILL_THRESHOLD = 0  # kph
-  RELAY_MALFUNCTION_ADDR = 0x2E4
-  RELAY_MALFUNCTION_BUS = 0
+  RELAY_MALFUNCTION_ADDRS = {0: (0x2E4,)}
   FWD_BLACKLISTED_ADDRS = {2: [0x2E4, 0x412, 0x191, 0x343]}
   FWD_BUS_LOOKUP = {0: 2, 2: 0}
   INTERCEPTOR_THRESHOLD = 805
@@ -50,8 +40,8 @@ class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
     values = {"STEER_TORQUE_CMD": torque, "STEER_REQUEST": steer_req}
     return self.packer.make_can_msg_panda("STEERING_LKA", 0, values)
 
-  def _lta_msg(self, req, req2, angle_cmd, setme_x64=100):
-    values = {"STEER_REQUEST": req, "STEER_REQUEST_2": req2, "STEER_ANGLE_CMD": angle_cmd, "SETME_X64": setme_x64}
+  def _lta_msg(self, req, req2, angle_cmd, torque_wind_down=100):
+    values = {"STEER_REQUEST": req, "STEER_REQUEST_2": req2, "STEER_ANGLE_CMD": angle_cmd, "TORQUE_WIND_DOWN": torque_wind_down}
     return self.packer.make_can_msg_panda("STEERING_LTA", 0, values)
 
   def _accel_msg(self, accel, cancel_req=0):
@@ -59,7 +49,7 @@ class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
     return self.packer.make_can_msg_panda("ACC_CONTROL", 0, values)
 
   def _speed_msg(self, speed):
-    values = {("WHEEL_SPEED_%s" % n): speed for n in ["FR", "FL", "RR", "RL"]}
+    values = {("WHEEL_SPEED_%s" % n): speed * 3.6 for n in ["FR", "FL", "RR", "RL"]}
     return self.packer.make_can_msg_panda("WHEEL_SPEEDS", 0, values)
 
   def _user_brake_msg(self, brake):
@@ -75,12 +65,6 @@ class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
     values = {"CRUISE_ACTIVE": enable}
     return self.packer.make_can_msg_panda("PCM_CRUISE", 0, values)
 
-  def _interceptor_gas_cmd(self, gas):
-    return interceptor_msg(gas, 0x200)
-
-  def _interceptor_user_gas(self, gas):
-    return interceptor_msg(gas, 0x201)
-
   def test_block_aeb(self):
     for controls_allowed in (True, False):
       for bad in (True, False):
@@ -94,14 +78,14 @@ class TestToyotaSafetyBase(common.PandaSafetyTest, common.InterceptorSafetyTest,
 
   # Only allow LTA msgs with no actuation
   def test_lta_steer_cmd(self):
-    for engaged, req, req2, setme_x64, angle in itertools.product([True, False],
+    for engaged, req, req2, torque_wind_down, angle in itertools.product([True, False],
                                                                   [0, 1], [0, 1],
                                                                   [0, 50, 100],
                                                                   np.linspace(-20, 20, 5)):
       self.safety.set_controls_allowed(engaged)
 
-      should_tx = not req and not req2 and angle == 0 and setme_x64 == 0
-      self.assertEqual(should_tx, self._tx(self._lta_msg(req, req2, angle, setme_x64)))
+      should_tx = not req and not req2 and angle == 0 and torque_wind_down == 0
+      self.assertEqual(should_tx, self._tx(self._lta_msg(req, req2, angle, torque_wind_down)))
 
   def test_rx_hook(self):
     # checksum checks
@@ -156,6 +140,10 @@ class TestToyotaSafetyAngle(TestToyotaSafetyBase):
                                                         [0, 1],
                                                         np.linspace(-1500, 1500, 7)):
       self.safety.set_controls_allowed(engaged)
+      torque = int(torque)
+      self.safety.set_rt_torque_last(torque)
+      self.safety.set_torque_meas(torque, torque)
+      self.safety.set_desired_torque_last(torque)
 
       should_tx = not steer_req and torque == 0
       self.assertEqual(should_tx, self._tx(self._torque_cmd_msg(torque, steer_req)))

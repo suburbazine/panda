@@ -15,7 +15,7 @@ def replay_drive(lr, safety_mode, param, alternative_experience, segment=False):
   safety.set_alternative_experience(alternative_experience)
 
   if segment:
-    init_segment(safety, lr, safety_mode)
+    init_segment(safety, lr, safety_mode, param)
     lr.reset()
 
   rx_tot, rx_invalid, tx_tot, tx_blocked, tx_controls, tx_controls_blocked = 0, 0, 0, 0, 0, 0
@@ -31,11 +31,11 @@ def replay_drive(lr, safety_mode, param, alternative_experience, segment=False):
 
     # skip start and end of route, warm up/down period
     if msg.logMonoTime - start_t > 1e9 and end_t - msg.logMonoTime > 1e9:
-      safety.safety_tick_current_rx_checks()
-      safety_tick_rx_invalid |= not safety.addr_checks_valid() or safety_tick_rx_invalid
+      safety.safety_tick_current_safety_config()
+      safety_tick_rx_invalid |= not safety.safety_config_valid() or safety_tick_rx_invalid
 
     if msg.which() == 'sendcan':
-     for canmsg in msg.sendcan:
+      for canmsg in msg.sendcan:
         to_send = package_can_msg(canmsg)
         sent = safety.safety_tx_hook(to_send)
         if not sent:

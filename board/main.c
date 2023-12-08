@@ -4,9 +4,8 @@
 #include "drivers/pwm.h"
 #include "drivers/usb.h"
 #include "drivers/gmlan_alt.h"
-#include "drivers/kline_init.h"
 #include "drivers/simple_watchdog.h"
-#include "drivers/logging.h"
+#include "drivers/bootkick.h"
 
 #include "early_init.h"
 #include "provision.h"
@@ -146,9 +145,6 @@ void __attribute__ ((noinline)) enable_fpu(void) {
 
 // called at 8Hz
 uint8_t loop_counter = 0U;
-uint8_t previous_harness_status = HARNESS_STATUS_NC;
-uint32_t waiting_to_boot_count = 0;
-bool waiting_to_boot = false;
 void tick_handler(void) {
   if (TICK_TIMER->SR != 0) {
     // siren
@@ -185,31 +181,10 @@ void tick_handler(void) {
       // unless we are in power saving mode
       current_board->set_led(LED_BLUE, (uptime_cnt & 1U) && (power_save_status == POWER_SAVE_STATUS_ENABLED));
 
-      // tick drivers at 1Hz
-      logging_tick();
-
       const bool recent_heartbeat = heartbeat_counter == 0U;
-      const bool harness_inserted = (harness.status != previous_harness_status) && (harness.status != HARNESS_STATUS_NC);
-      const bool just_bootkicked = current_board->board_tick(check_started(), usb_enumerated, recent_heartbeat, harness_inserted);
-      previous_harness_status = harness.status;
 
-      // log device boot time
-      const bool som_running = current_board->read_som_gpio();
-      if (just_bootkicked && !som_running) {
-        log("bootkick");
-        waiting_to_boot = true;
-      }
-      if (waiting_to_boot) {
-        if (som_running) {
-          log("device booted");
-          waiting_to_boot = false;
-        } else if (waiting_to_boot_count == 45U) {
-          log("not booted after 45s");
-        } else {
-
-        }
-        waiting_to_boot_count += 1U;
-      }
+      // tick drivers at 1Hz
+      bootkick_tick(check_started(), recent_heartbeat);
 
       // increase heartbeat counter and cap it at the uint32 limit
       if (heartbeat_counter < __UINT32_MAX__) {
@@ -296,7 +271,7 @@ void tick_handler(void) {
       ignition_can_cnt += 1U;
 
       // synchronous safety check
-      safety_tick(current_rx_checks);
+      safety_tick(&current_safety_config);
     }
 
     loop_counter++;
@@ -352,7 +327,6 @@ int main(void) {
   current_board->set_led(LED_RED, true);
   current_board->set_led(LED_GREEN, true);
   adc_init();
-  logging_init();
 
   // print hello
   print("\n\n\n************************ MAIN START ************************\n");
@@ -371,16 +345,6 @@ int main(void) {
 
   // panda has an FPU, let's use it!
   enable_fpu();
-
-  log("main start");
-
-  if (current_board->has_lin) {
-    // enable LIN
-    uart_init(&uart_ring_lin1, 10400);
-    UART5->CR2 |= USART_CR2_LINEN;
-    uart_init(&uart_ring_lin2, 10400);
-    USART3->CR2 |= USART_CR2_LINEN;
-  }
 
   if (current_board->fan_max_rpm > 0U) {
     fan_init();
