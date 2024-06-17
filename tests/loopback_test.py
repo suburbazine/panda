@@ -4,8 +4,6 @@ import os
 import time
 import random
 import argparse
-
-from hexdump import hexdump
 from itertools import permutations
 
 from panda import Panda
@@ -38,40 +36,19 @@ def run_test_w_pandas(pandas, sleep_duration):
     # **** test health packet ****
     print("health", ho[0], h[ho[0]].health())
 
-    # **** test K/L line loopback ****
-    for bus in [2, 3]:
-      # flush the output
-      h[ho[1]].kline_drain(bus=bus)
-
-      # send the characters
-      st = get_test_string()
-      st = bytes([0xaa, len(st) + 3]) + st
-      h[ho[0]].kline_send(st, bus=bus, checksum=False)
-
-      # check for receive
-      ret = h[ho[1]].kline_drain(bus=bus)
-
-      print("ST Data:")
-      hexdump(st)
-      print("RET Data:")
-      hexdump(ret)
-      assert st == ret
-      print("K/L pass", bus, ho, "\n")
-      time.sleep(sleep_duration)
-
     # **** test can line loopback ****
-    for bus, gmlan in [(0, False), (1, False), (2, False), (1, True), (2, True)]:
+    for bus, obd in [(0, False), (1, False), (2, False), (1, True), (2, True)]:
       print("\ntest can", bus)
       # flush
       cans_echo = panda0.can_recv()
       cans_loop = panda1.can_recv()
 
-      panda0.set_gmlan(None)
-      panda1.set_gmlan(None)
+      panda0.set_obd(None)
+      panda1.set_obd(None)
 
-      if gmlan is True:
-        panda0.set_gmlan(bus)
-        panda1.set_gmlan(bus)
+      if obd is True:
+        panda0.set_obd(bus)
+        panda1.set_obd(bus)
         bus = 3
 
       # send the characters
