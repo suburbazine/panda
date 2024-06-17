@@ -342,7 +342,7 @@ static safety_config hyundai_init(uint16_t param) {
     ret = BUILD_SAFETY_CFG(hyundai_long_rx_checks, HYUNDAI_LONG_TX_MSGS);
   } else if (hyundai_camera_scc) {
     ret = BUILD_SAFETY_CFG(hyundai_cam_scc_rx_checks, HYUNDAI_CAMERA_SCC_TX_MSGS);
-  } else if (hyundai_can_canfd) {
+  } else if (hyundai_can_canfd_hybrid) {
     ret = BUILD_SAFETY_CFG(hyundai_can_canfd_hybrid_rx_checks, HYUNDAI_CAN_CANFD_HYBRID_TX_MSGS);
   } else {
     ret = BUILD_SAFETY_CFG(hyundai_rx_checks, HYUNDAI_TX_MSGS);
