@@ -3,7 +3,7 @@
 ![panda tests](https://github.com/commaai/panda/workflows/tests/badge.svg)
 ![panda drivers](https://github.com/commaai/panda/workflows/drivers/badge.svg)
 
-panda speaks CAN and CAN FD, and it runs on [STM32F205](https://www.st.com/resource/en/reference_manual/rm0033-stm32f205xx-stm32f207xx-stm32f215xx-and-stm32f217xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf), [STM32F413](https://www.st.com/resource/en/reference_manual/rm0430-stm32f413423-advanced-armbased-32bit-mcus-stmicroelectronics.pdf), and [STM32H725](https://www.st.com/resource/en/reference_manual/rm0468-stm32h723733-stm32h725735-and-stm32h730-value-line-advanced-armbased-32bit-mcus-stmicroelectronics.pdf).
+panda speaks CAN and CAN FD, and it runs on [STM32F413](https://www.st.com/resource/en/reference_manual/rm0430-stm32f413423-advanced-armbased-32bit-mcus-stmicroelectronics.pdf) and [STM32H725](https://www.st.com/resource/en/reference_manual/rm0468-stm32h723733-stm32h725735-and-stm32h730-value-line-advanced-armbased-32bit-mcus-stmicroelectronics.pdf).
 
 ## Directory structure
 
@@ -23,17 +23,17 @@ Safety modes optionally support `controls_allowed`, which allows or blocks a sub
 
 ## Code Rigor
 
-The panda firmware is written for its use in conjuction with [openpilot](https://github.com/commaai/openpilot). The panda firmware, through its safety model, provides and enforces the
+The panda firmware is written for its use in conjunction with [openpilot](https://github.com/commaai/openpilot). The panda firmware, through its safety model, provides and enforces the
 [openpilot safety](https://github.com/commaai/openpilot/blob/master/docs/SAFETY.md). Due to its critical function, it's important that the application code rigor within the `board` folder is held to high standards.
 
 These are the [CI regression tests](https://github.com/commaai/panda/actions) we have in place:
 * A generic static code analysis is performed by [cppcheck](https://github.com/danmar/cppcheck/).
-* In addition, [cppcheck](https://github.com/danmar/cppcheck/) has a specific addon to check for [MISRA C:2012](https://www.misra.org.uk/MISRAHome/MISRAC2012/tabid/196/Default.aspx) violations. See [current coverage](https://github.com/commaai/panda/blob/master/tests/misra/coverage_table).
+* In addition, [cppcheck](https://github.com/danmar/cppcheck/) has a specific addon to check for [MISRA C:2012](https://misra.org.uk/) violations. See [current coverage](https://github.com/commaai/panda/blob/master/tests/misra/coverage_table).
 * Compiler options are relatively strict: the flags `-Wall -Wextra -Wstrict-prototypes -Werror` are enforced.
 * The [safety logic](https://github.com/commaai/panda/tree/master/board/safety) is tested and verified by [unit tests](https://github.com/commaai/panda/tree/master/tests/safety) for each supported car variant.
 to ensure that the behavior remains unchanged.
 * A hardware-in-the-loop test verifies panda's functionalities on all active panda variants, including:
-  * additional afety model checks
+  * additional safety model checks
   * compiling and flashing the bootstub and app code
   * receiving, sending, and forwarding CAN messages on all buses
   * CAN loopback and latency tests through USB and SPI
@@ -78,7 +78,8 @@ For example, to receive CAN messages:
 ```
 And to send one on bus 0:
 ``` python
->>> panda.can_send(0x1aa, "message", 0)
+>>> panda.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
+>>> panda.can_send(0x1aa, b'message', 0)
 ```
 Note that you may have to setup [udev rules](https://github.com/commaai/panda/tree/master/drivers/linux) for Linux, such as
 ``` bash
@@ -98,7 +99,6 @@ As a universal car interface, it should support every reasonable software interf
 - [Python library](https://github.com/commaai/panda/tree/master/python)
 - [C++ library](https://github.com/commaai/openpilot/tree/master/selfdrive/boardd)
 - [socketcan in kernel](https://github.com/commaai/panda/tree/master/drivers/linux) (alpha)
-- [Windows J2534](https://github.com/commaai/panda/tree/master/drivers/windows)
 
 ## Licensing
 
